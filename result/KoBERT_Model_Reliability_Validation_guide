@@ -1,0 +1,16 @@
+1차 실험 (기본값)
+num_train_epochs=5, learning_rate=5e-5 (현재 설정)
+
+결과 예시: 최종 Loss: 0.12 / F1-score: 82%
+
+
+2차 실험 (학습 횟수 늘려보기)
+num_train_epochs=10, learning_rate=5e-5 (더 많이 공부시켜보기)
+
+결과 예시: 최종 Loss: 0.05 / F1-score: 88%
+
+
+3차 실험 (학습률 낮춰서 꼼꼼히 학습시키기)
+num_train_epochs=5, learning_rate=2e-5 (더 신중하게 학습시켜보기)
+
+결과 예시: 최종 Loss: 0.09 / F1-score: 85%
