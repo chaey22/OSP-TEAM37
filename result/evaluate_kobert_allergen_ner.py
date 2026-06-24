@@ -47,7 +47,7 @@ except Exception:
 print("DataFrame Columns:", df.columns)
 
 # 2. '인식 가능'한 정상 데이터만 필터링하기
-# (중요: 수민 님이 학습시킬 코드는 문자가 깨진 '인식 불가' 데이터는 제외해야 합니다!)
+# (중요: 학습시킬 코드는 문자가 깨진 '인식 불가' 데이터는 제외해야 합니다!)
 # 'Unnamed: 5' 컬럼이 없는 경우 'Unnamed: 4'를 대신 사용합니다.
 df_clean = df[df['quality_label'] == 'readable'].dropna(subset=['tokens', 'labels'])
 
