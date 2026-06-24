@@ -10,49 +10,60 @@ Original file is located at
 !pip install transformers datasets evaluate accelerate
 !pip install seqeval  # NER(개체명 인식) 모델의 F1-score 성능 평가를 위한 필수 라이브러리
 
-#구글 드라이브 마운트
-from google.colab import drive
-drive.mount('/content/drive')
-
 import pandas as pd
 
-# 'kobert_ner_sample.csv' 파일의 실제 Google Drive 경로로 이 부분을 교체하세요.
-# 예시: '/content/drive/MyDrive/kobert_ner_sample.csv' 또는
-#       '/content/drive/MyDrive/MyFolder/kobert_ner_sample.csv'
-file_path = '/content/drive/MyDrive/kobert_ner_sample.csv' # 여기에 정확한 파일 경로를 입력하세요.
+# ==========================================
+# [치트키] 깃허브에 올라온 CSV 파일의 RAW 주소로 직접 로드
+# ==========================================
+# 팀 깃허브에 올라간 kobert_ner_all.csv 파일의 'Raw' 주소를 복사해서 넣어줍니다.
+github_raw_url = "https://raw.githubusercontent.com/chaey22/OSP-TEAM37/main/dataset/kobert_ner_all.csv"
 
 try:
-    df = pd.read_csv(file_path, encoding='cp949')
-except UnicodeDecodeError:
-    df = pd.read_csv(file_path, encoding='euc-kr')
-except FileNotFoundError:
-    print(f"오류: 파일을 찾을 수 없습니다. 경로를 다시 확인해주세요: {file_path}")
-    print("Google Drive에 파일이 올바르게 위치해 있는지, 그리고 경로가 정확한지 확인해주세요.")
-else:
-    print("데이터 크기:", df.shape)
-    display(df.head())
-
-import pandas as pd
-
-# 1. 파일 불러오기 (인코딩 에러 방지 처리)
-# Google Drive에서 파일을 로드하려면 절대 경로를 사용해야 합니다.
-file_path = '/content/drive/MyDrive/kobert_ner_sample.csv' # 이 경로를 사용하도록 수정합니다.
-
-try:
-    df = pd.read_csv(file_path, encoding="cp949")
+    # 깃허브 웹 주소에서 데이터 직접 받아오기 (인코딩 기본값 utf-8 또는 cp949 세팅)
+    df = pd.read_csv(github_raw_url, encoding='utf-8')
 except Exception:
-    df = pd.read_csv(file_path, encoding="euc-kr")
+    df = pd.read_csv(github_raw_url, encoding='cp949')
 
-# 2. '인식 가능'한 정상 데이터만 필터링하기
-# (중요: 수민 님이 학습시킬 코드는 문자가 깨진 '인식 불가' 데이터는 제외해야 합니다!)
-df_clean = df[df['Unnamed: 5'] == 'readable'].dropna(subset=['tokens', 'labels'])
+print("🎯 깃허브 원격 데이터셋 로드 성공! 데이터 크기:", df.shape)
 
-# 3. 데이터 개수와 상위 3개 샘플 확인하기
-print(f"전체 데이터 개수: {len(df)}개")
+# 정상 데이터 필터링
+df_clean = df[df['quality_label'] == 'readable'].dropna(subset=['tokens', 'labels'])
 print(f"학습 가능한 정상 데이터 개수: {len(df_clean)}개\n")
 
-# 필요한 컬럼만 쏙 골라서 출력해보기
-df_clean[['corrected_text', 'tokens', 'labels']].head(3)
+import os
+import pandas as pd
+
+# ==========================================
+# [최종 수정] 어디서든 원클릭 실행 가능한 범용 데이터 로더
+# ==========================================
+# 팀원들이 합쳐서 올려준 최종 전체 데이터셋 파일명으로 지정합니다.
+file_name = 'kobert_ner_all.csv'
+
+if not os.path.exists(file_name):
+    print(f"⚠️ [{file_name}] 파일이 코랩에 업로드되지 않았습니다.")
+    print("💡 해결 방법: 코랩 왼쪽 메뉴의 📁(폴더 아이콘)을 누른 뒤,")
+    print(f"   [{file_name}] 파일을 드래그 앤 드롭으로 업로드하고 다시 실행해 주세요!")
+else:
+    # 1. 파일 불러오기 (인코딩 에러 방지 처리)
+    try:
+        df = pd.read_csv(file_name, encoding="cp949")
+    except Exception:
+        df = pd.read_csv(file_name, encoding="euc-kr")
+
+    # 2. '인식 가능'한 정상 데이터만 필터링하기 (quality_label 기준)
+    # 기존 'Unnamed: 5' 대신 정식 정제 컬럼인 'quality_label'을 사용하여 필터링합니다.
+    df_clean = df[df['quality_label'] == 'readable'].dropna(subset=['tokens', 'labels'])
+
+    # 3. 데이터 개수와 상위 3개 샘플 확인하기
+    print(f"🎯 최종 데이터셋 로드 성공! 데이터 크기: {df.shape}")
+    print(f"전체 수집 데이터 개수: {len(df)}개")
+    print(f"학습 가능한 정상 데이터 개수: {len(df_clean)}개\n")
+
+    # 필요한 컬럼만 쏙 골라서 출력해보기
+    display(df_clean[['corrected_text', 'tokens', 'labels']].head(3))
+
+from google.colab import drive
+drive.mount('/content/drive')
 
 # 1. 파이프(|) 기호로 뭉쳐있는 텍스트를 파이썬 리스트로 쪼개기
 df_clean['token_list'] = df_clean['tokens'].apply(lambda x: x.split('|'))
@@ -206,3 +217,236 @@ try:
 except NameError:
     # 혹시나 model 변수까지 리셋되었을 경우를 위한 안전장치
     print("⚠️ 코랩 세션이 완전히 초기화된 것 같습니다. '학습 시작' 셀(trainer.train())을 다시 한번 실행한 뒤 이 셀을 돌려주세요!")
+
+import os
+from transformers import pipeline, AutoModelForTokenClassification, AutoTokenizer
+
+# 허깅페이스가 인터넷 주소로 오해하지 못하도록 명확한 '로컬 상대 경로(./)' 문자열로 지정합니다.
+local_model_path = file_path = '/content/final_kobert_allergen_model'
+
+print(f"📂 로드 시도할 로컬 상대 경로: {local_model_path}")
+print(f"🔍 해당 폴더가 현재 위치에 존재하는가?: {os.path.exists(local_model_path)}\n")
+
+try:
+    # 1. 상대 경로 문자열을 통해 로컬 가중치를 명시적으로 메모리에 로드
+    loaded_model = AutoModelForTokenClassification.from_pretrained(local_model_path, local_files_only=True)
+    loaded_tokenizer = AutoTokenizer.from_pretrained(local_model_path, local_files_only=True)
+
+    # 2. 로드된 객체를 파이프라인에 직접 주입 (이러면 내부에서 경로 파싱을 다시 하지 않습니다)
+    nlp_ner = pipeline(
+        "ner",
+        model=loaded_model,
+        tokenizer=loaded_tokenizer,
+        aggregation_strategy="simple"  # 서브 토큰들을 하나의 단어로 묶어주는 옵션
+    )
+    print("🎯 [성공] 학습된 KoBERT NER 추론 파이프라인이 완벽하게 로드되었습니다!\n")
+except Exception as e:
+    print(f"❌ 모델 로드 실패! 에러 내용: {e}\n")
+
+# 검증할 3가지 필수 시나리오 문장 정의
+scenarios = {
+    "시나리오 A (정석적인 표기)": "원재료명: 소맥분(밀), 유청분말(우유), 대두유, 정제소금, 난황분말(계란)",
+    "시나리오 B (제조시설 혼입 문구)": "본 제품은 메밀과 땅콩을 사용한 제품과 같은 제조시설에서 제조하고 있습니다.",
+    "시나리오 C (당 불내증 파생 성분)": "이 제품은 락토오스, 유청여과물, 카제인나트륨을 함유하고 있습니다."
+}
+
+# 시나리오별 실시간 추론 테스트 실행
+print("="*60)
+print("             [ KoBERT 알레르기 NER 모델 실시간 검증 ]             ")
+print("="*60)
+
+if 'nlp_ner' in locals() or 'nlp_ner' in globals():
+    for name, text in scenarios.items():
+        print(f"🎬 {name}")
+        print(f"📝 입력 문장: {text}")
+
+        results = nlp_ner(text)
+
+        print("🔍 AI 분석 결과:")
+        if not results:
+            print("  -> 안전: 알레르기 유발 물질이나 위험 경고 문맥이 감지되지 않았습니다.")
+        else:
+            for entity in results:
+                print(f"  [태그: {entity['entity_group']}] -> 단어: '{entity['word']}' (확신도: {entity['score']:.2f})")
+
+        print("-" * 60)
+else:
+    print("⚠️ 상단에서 파이프라인 빌드가 실패하여 추론 테스트를 진행할 수 없습니다.")
+
+import os
+from transformers import pipeline, AutoModelForTokenClassification, AutoTokenizer
+
+# 학습 완료된 모델 폴더 지정
+local_model_path = "./final_kobert_allergen_model"
+
+try:
+    # 모델 및 토크나이저 로드
+    loaded_model = AutoModelForTokenClassification.from_pretrained(local_model_path, local_files_only=True)
+    loaded_tokenizer = AutoTokenizer.from_pretrained(local_model_path, local_files_only=True)
+
+    nlp_ner = pipeline(
+        "ner",
+        model=loaded_model,
+        tokenizer=loaded_tokenizer,
+        aggregation_strategy="simple"
+    )
+    print("🎯 [성공] KoBERT 알레르기 분석 모델이 준비되었습니다!")
+    print("밑의 입력창에 테스트하고 싶은 성분표 문장을 자유롭게 입력해 보세요.\n")
+
+    # -------------------------------------------------------------
+    # 💡 직접 문장을 입력하는 인터랙티브 루프 구문
+    # -------------------------------------------------------------
+    while True:
+        user_input = input("📝 분석할 성분표 문장을 입력하세요 (종료하려면 'q' 입력): ").strip()
+
+        if user_input.lower() == 'q':
+            print("👋 실시간 검증을 종료합니다.")
+            break
+
+        if not user_input:
+            print("⚠️ 문장을 입력해 주세요!\n")
+            continue
+
+        # AI 모델 추론 진행
+        results = nlp_ner(user_input)
+
+        print("\n" + "="*50)
+        print(f"🔍 입력한 문장: {user_input}")
+        print("-"*50)
+        print("🤖 AI 분석 결과:")
+
+        if not results:
+            print("  -> 🎉 안전: 알레르기 유발 물질이나 경고 문맥이 감지되지 않았습니다.")
+        else:
+            for entity in results:
+                print(f"  [태그: {entity['entity_group']}] -> 단어: '{entity['word']}' (확신도: {entity['score']:.2f})")
+
+        print("="*50 + "\n")
+
+except Exception as e:
+    print(f"❌ 모델 로드 실패! 에러 내용: {e}")
+
+import os
+import torch
+from transformers import AutoTokenizer, AutoModelForTokenClassification, pipeline
+from PIL import Image
+
+# 1. 저장한 KoBERT 모델 로드
+model_path = "./final_kobert_allergen_model"
+tokenizer = AutoTokenizer.from_pretrained(model_path)
+model = AutoModelForTokenClassification.from_pretrained(model_path, local_files_only=True)
+nlp_ner = pipeline("ner", model=model, tokenizer=tokenizer, aggregation_strategy="simple")
+
+# [임시 가상 OCR 기능] 아직 채연님의 EasyOCR 모듈과 합치기 전이므로,
+# 테스트를 위해 사진 대신 실제 과자 성분표 텍스트가 추출되었다고 가정합니다.
+ocr_extracted_text = "원재료명: 소맥분(밀), 유청분말(우유), 대두유, 백설탕, 마가린"
+
+print("="*60)
+print("▶ [1단계] EasyOCR 글자 추출 완료 (가상)")
+print(f"추출된 성분표 텍스트: {ocr_extracted_text}")
+print("="*60)
+
+# 2. 사용자가 가입할 때 등록한 '조심해야 하는 알레르기' 설정 (예시: 우유, 땅콩)
+user_allergies = ["우유", "땅콩"]
+print(f"👤 사용자 등록 알레르기: {user_allergies}")
+print("="*60)
+
+# 3. KoBERT 모델을 통해 성분표 문장 분석 진행
+ner_results = nlp_ner(ocr_extracted_text)
+
+print("▶ [2단계] KoBERT AI 성분 및 문맥 분석 중...")
+detected_allergens = []
+
+for entity in ner_results:
+    word = entity['word'].replace("##", "").strip()
+    label = entity['entity_group']
+
+    # 알레르기 성분(MILK, WHEAT, SOY 등)으로 분류된 단어들을 수집
+    if label != 'O':
+        detected_allergens.append(word)
+        print(f"   [탐지] 단어: '{word}' -> AI 분석 결과: {label} (확신도: {entity['score']:.2f})")
+
+print("="*60)
+
+# 4. [3단계] 사용자의 알레르기 정보와 AI가 찾은 성분을 대조하여 경고문 출력
+print("▶ [3단계] 사용자 맞춤형 알레르기 위험도 최종 판별")
+print("-"*60)
+
+danger_found = False
+for allergy in user_allergies:
+    if allergy in detected_allergens:
+        print(f"🚨 [위험] 이 식품에는 사용자가 조심해야 하는 [{allergy}] 성분이 포함되어 있습니다! 섭취하지 마세요.")
+        danger_found = True
+
+if not danger_found:
+    print("🍏 [안전] 해당 식품에는 사용자가 등록한 알레르기 유발 성분이 탐지되지 않았습니다.")
+
+print("="*60)
+
+import os
+import torch
+from transformers import AutoTokenizer, AutoModelForTokenClassification, pipeline
+
+# 1. 저장한 KoBERT 모델 로드
+model_path = "./final_kobert_allergen_model"
+
+if not os.path.exists(model_path):
+    print(f"⚠️ [{model_path}] 폴더를 찾을 수 없습니다.")
+    print("위쪽 셀에서 모델 학습(trainer.train())과 모델 저장을 먼저 완료한 뒤 이 셀을 실행해 주세요!")
+else:
+    # 모델 및 토크나이저 로드 (로컬 파일 사용 강제)
+    tokenizer = AutoTokenizer.from_pretrained(model_path)
+    model = AutoModelForTokenClassification.from_pretrained(model_path, local_files_only=True)
+    nlp_ner = pipeline("ner", model=model, tokenizer=tokenizer, aggregation_strategy="simple")
+
+    print("="*60)
+    print("⌨️ [실시간 인터랙티브 검증 시스템] 정보 입력 단계")
+    print("="*60)
+
+    # 1. 사용자 알레르기 설정 입력 받기 (쉼표로 구분)
+    user_input_allergies = input("👤 조심해야 하는 알레르기 성분을 입력하세요 (예: 우유, 땅콩, 계란): ")
+    # 공백 제거 후 리스트로 분할
+    user_allergies = [allg.strip() for allg in user_input_allergies.split(",") if allg.strip()]
+
+    # 2. 성분표 문장 입력 받기
+    ocr_extracted_text = input("📝 분석할 식품 성분표 문장을 입력하세요: ")
+
+    print("\n" + "="*60)
+    print("▶ [1단계] 입력 데이터 확인")
+    print(f"  - 사용자 등록 알레르기: {user_allergies}")
+    print(f"  - 분석 대상 성분표 텍스트: {ocr_extracted_text}")
+    print("="*60)
+
+    # 3. KoBERT 모델을 통해 성분표 문장 분석 진행
+    ner_results = nlp_ner(ocr_extracted_text)
+
+    print("▶ [2단계] KoBERT AI 성분 및 문맥 분석 중...")
+    detected_allergens = []
+
+    for entity in ner_results:
+        word = entity['word'].replace("##", "").strip()
+        label = entity['entity_group']
+
+        # 알레르기 성분(MILK, WHEAT, SOY 등)으로 분류된 단어들을 수집
+        if label != 'O':
+            detected_allergens.append(word)
+            print(f"   [탐지] 단어: '{word}' -> AI 분석 결과: {label} (확신도: {entity['score']:.2f})")
+
+    if not detected_allergens:
+        print("   [안내] AI가 문장 내에서 특별한 알레르기 유발 개체명을 식별하지 못했습니다.")
+    print("="*60)
+
+    # 4. 사용자의 알레르기 정보와 AI가 찾은 성분을 대조하여 경고문 출력
+    print("▶ [3단계] 사용자 맞춤형 알레르기 위험도 최종 판별")
+    print("-"*60)
+
+    danger_found = False
+    for allergy in user_allergies:
+        if allergy in detected_allergens:
+            print(f"🚨 [위험] 이 식품에는 사용자가 조심해야 하는 [{allergy}] 성분이 포함되어 있습니다! 섭취하지 마세요.")
+            danger_found = True
+
+    if not danger_found:
+        print("🍏 [안전] 해당 식품에는 사용자가 등록한 알레르기 유발 성분이 탐지되지 않았습니다.")
+
+    print("="*60)
