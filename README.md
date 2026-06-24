@@ -1,135 +1,91 @@
 # OSP-TEAM37
 
-## 프로젝트 소개
-식품 성분표 이미지를 분석하여 알레르기 유발 성분을 탐지하는 AI 시스템
+## 프로젝트 실행 환경 및 사용 방법
 
-## 팀원
-- 김채연
-- 이연우
-- 박수민
+본 프로젝트는 식품 성분표 이미지에서 알레르기 유발 성분을 인식하기 위한 시스템으로, YOLO 기반 성분표 탐지, EasyOCR 기반 텍스트 추출, KoBERT 기반 알레르기 성분 인식 모듈로 구성되어 있음.
 
-## 진행 상황
+프로젝트는 Google Colab 환경에서 개발 및 테스트를 수행하였으며, KoBERT 모델 학습 및 추론 과정에서 GPU 사용을 권장함.
 
-### 2026-06-15
+### 개발 환경
 
-#### 데이터 수집
-- 성분표 이미지 101장 직접 촬영 및 수집
-- Roboflow 업로드 완료
-- ingredient_label 객체 라벨링 완료
+* Google Colab
+* Python 3.10 이상
+* GPU(T4 이상 권장)
 
-#### 1차 객체 탐지 모델 학습
-- Roboflow 3.0 Object Detection 사용
-- 데이터셋 버전: 성분 라벨 v1
+### 사용 라이브러리
 
-성능 결과
-- mAP@50 : 99.5%
-- Precision : 96.9%
-- Recall : 100%
-- F1 Score : 98.5%
+* ultralytics
+* easyocr
+* pandas
+* numpy
+* torch
+* transformers
+* datasets
+* evaluate
+* accelerate
+* seqeval
+* opencv-python
 
-#### 현재 진행 중
-- 추가 이미지 수집 및 라벨링
-- 목표 데이터 수 : 약 400장
-- 성분표 영역 검출 성능 향상 예정
+### 실행 순서
 
+#### 1. 성분표 영역 탐지
 
-### 2026-06-16
+YOLO 기반 객체 탐지 모델을 이용하여 식품 이미지에서 성분표 영역을 검출함.
 
-#### 데이터셋 확장
+```bash
+python crop_labels.py
+```
 
-* 성분표 이미지 추가 수집
-* 총 385장 라벨링 완료
-* Roboflow 데이터셋 버전 업데이트
+#### 2. OCR 텍스트 추출
 
-#### 2차 객체 탐지 모델 재학습
+탐지된 성분표 영역에 EasyOCR을 적용하여 텍스트를 추출함.
 
-* Roboflow 3.0 Object Detection 사용
-* 데이터셋 버전: ingredient_label_v2
-* 학습 이미지 수 : 385장
+```bash
+python ocr_test_fianl.py
+```
 
-성능 결과
+실행 결과는 CSV 파일 형태로 저장되며, 이후 알레르기 성분 인식 모델의 입력 데이터로 활용됨.
 
-* mAP@50 : 99.5%
-* Precision : 95.2%
-* Recall : 100%
-* F1 Score : 97.5%
+예시 출력 파일
 
-#### OCR 환경 구축
+```text
+ocr_result_crop_v3.csv
+```
 
-* EasyOCR 설치 완료
-* OCR 테스트 코드 작성
-* 성분표 이미지에서 텍스트 추출 성공
-* OCR 결과 CSV 생성 작업 진행 중
+#### 3. KoBERT 기반 알레르기 성분 인식
 
-#### 현재 진행 중
+Google Colab 환경에서 `(2)kobert-token-classification-allergen.ipynb` 파일을 실행함.
 
-* 385장 이미지 OCR 수행
-* OCR 결과 CSV 생성
-* BIO 라벨링용 텍스트 데이터 구축 준비
+NER(Named Entity Recognition) 모델을 이용하여 성분표 내 알레르기 유발 성분을 인식함.
 
-#### 다음 단계
+현재 학습된 알레르기 성분은 다음과 같음.
 
-* OCR 결과를 CSV 파일로 정리
-* 알레르기 성분 BIO 라벨링 진행
-* KoBERT NER 학습 데이터셋 구축
+* 우유(MILK)
+* 대두(SOY)
+* 밀(WHEAT)
+* 계란(EGG)
+* 땅콩(PEANUT)
 
+예시 입력
 
-2026-06-17/18
-OCR 결과 정리 및 품질 검수
+```text
+혼합분유, 탈지분유
+```
 
-* 객체 탐지로 잘라낸 성분표 이미지의 EasyOCR 결과 CSV 정리
-* 이미지 파일명과 OCR 결과 파일명 매칭
-* OCR 원문과 사람이 직접 교정한 텍스트를 함께 저장
-* 이미지 판독 가능 여부를 readable / unreadable로 분류
-* 판독이 어려운 이미지는 학습 데이터에서 제외할 수 있도록 구분
+예시 출력
 
-알레르기 성분 사전 구축
+```text
+검출된 알레르기 성분
+- 우유
 
-* 초기 탐지 대상 알레르기 항목 5종 선정
+최종 판정
+위험
+```
 
-  * 우유(MILK)
-  * 계란(EGG)
-  * 땅콩(PEANUT)
-  * 대두(SOY)
-  * 밀(WHEAT)
-* 원재료명과 알레르기 분류를 연결한 allergy_dictionary.csv 작성
-* 전지분유, 유청, 난백액, 대두유, 밀가루 등 파생 성분을 알레르기 유형별로 정리
+### 실행 시 주의사항
 
-BIO 라벨링 기준 수립
+KoBERT 모델은 최초 실행 시 HuggingFace 서버에서 KLUE-BERT 모델을 다운로드하므로 인터넷 연결이 필요함.
 
-* KoBERT NER 학습을 위한 BIO 라벨 체계 정의
-* B-MILK, B-EGG, B-PEANUT, B-SOY, B-WHEAT 및 I 라벨 구성
-* 알레르기 관련 성분이 아닌 토큰은 O로 처리
-* tokens와 labels의 개수가 일치하도록 데이터 검수 기준 설정
-* BIO 라벨링 가이드 문서 작성
+또한 실제 식품 포장 이미지에서는 반사광, 저조도, 곡면 포장재 등의 영향으로 OCR 인식 오류가 발생할 수 있으며, OCR 결과 품질에 따라 알레르기 성분 인식 성능이 달라질 수 있음.
 
-KoBERT NER 샘플 데이터셋 구축
-
-* 데이터 컬럼 구성
-
-  * image_name
-  * ocr_text
-  * corrected_text
-  * tokens
-  * labels
-  * quality_label
-* 이미지 파일명과 OCR 결과를 매칭하여 ocr_text 입력
-* 이미지에서 직접 확인한 알레르기 표시 문구를 corrected_text로 교정
-* 성분 단위 토큰과 BIO 라벨 작성
-* 초기 샘플 데이터셋을 GitHub 브랜치에 업로드하고 Pull Request 생성
-
-현재 진행 중
-
-* readable 이미지의 BIO 라벨링 데이터 추가 구축
-* OCR 오인식 결과 수동 교정
-* 알레르기 성분 사전 확장 및 검수
-* KoBERT NER 데이터 로딩 및 토큰-라벨 정렬 코드 준비
-
-다음 단계
-
-* 샘플 데이터로 KoBERT NER 학습 코드 동작 확인
-* 데이터 형식 검증 후 학습 데이터셋 확장
-* KoBERT 토크나이저의 서브워드와 BIO 라벨 정렬
-* 학습·검증·테스트 데이터 분리
-* 모델 학습 후 Precision, Recall, F1 Score 평가
-* OCR 결과에서 탐지된 알레르기 성분과 사용자 선택 알레르기를 비교하여 위험 여부 출력
+초기 개발 목표는 사용자가 성분표 이미지를 입력하면 알레르기 위험도를 자동으로 판별하는 End-to-End 시스템 구현이었음. 그러나 실제 성분표 이미지에서 OCR 인식 오류가 빈번하게 발생하여 최종 구현에서는 성분표 영역 탐지, OCR 텍스트 추출, KoBERT 기반 알레르기 성분 인식 기능 구현에 중점을 두어 개발을 진행하였음.
