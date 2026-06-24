@@ -70,7 +70,7 @@ NER(Named Entity Recognition) 모델을 이용하여 성분표 내 알레르기 
 
 
 
-##### 2. Google Colab 환경에서 `(2)kobert-token-classification-allergen.ipynb` 파일을 실행함.
+##### 2. Google Colab 환경에서 `kobert_token_classification_allergen.py` 파일을 실행함.
 
 NER(Named Entity Recognition) 모델을 이용하여 성분표 내 알레르기 유발 성분을 인식함.
 
